@@ -29,10 +29,14 @@ const songSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    id_accounts: [{
+    id_accounts: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Accounts",
         required: true
+    },
+    feat: [{
+        type: String,
+
     }],
     id_album: {
         type: mongoose.Schema.Types.ObjectId,

@@ -14,19 +14,19 @@ const playListController = {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
                 let playlist = await PlayLists.find({ id_account: account.id });
-                res.status(200).json(playlist);
+                return res.status(200).json(playlist);
             });
         }
         catch (err) {
-            res.status(500).json(err);
+            return res.status(500).json(err);
         }
     },
     deleteplaylist: async (req, res) => {
         try {
             await Songs.findByIdAndDelete(req.params.id);
-            res.status(200).json("Songs deleted");
+            return res.status(200).json("Songs deleted");
         } catch (err) {
-            res.status(500).json(err);
+            return res.status(500).json(err);
         }
     },
     addPlaylist: async (req, res) => {
@@ -44,7 +44,7 @@ const playListController = {
                     name_playlist: req.body.name_playlist,
                 })
                 const playlist = await newPlaylist.save();
-                res.status(200).json(playlist);
+                return res.status(200).json(playlist);
 
             });
         }
@@ -56,7 +56,7 @@ const playListController = {
 
             res.status(200).json("Songs remove");
         } catch (err) {
-            res.status(500).json(err);
+            return res.status(500).json(err);
         }
     },
     addSongToPlayList: async (req, res) => {
@@ -74,10 +74,10 @@ const playListController = {
                     id_song: req.body.id_song
                 })
                 const song = await addsong.save();
-                res.status(200).json(song);
+                return res.status(200).json(song);
             })
         } catch (err) {
-            res.status(500).json(err);
+            return res.status(500).json(err);
         }
     }
 }

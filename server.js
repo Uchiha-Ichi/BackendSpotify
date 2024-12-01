@@ -7,11 +7,48 @@ var bodyParser = require("body-parser");
 const morgan = require("morgan");
 const dotenv = require("dotenv");
 const fileUpload = require('express-fileupload');
+const session = require('express-session');
 dotenv.config();
 
 const Types = require("./models/Types.model");
 
-app.use(fileUpload());
+// const typesToAdd = [
+//     { name_type: "Sadness", description: "A state of unhappiness or sorrow." },
+//     { name_type: "Joy", description: "A feeling of great pleasure and happiness." },
+//     { name_type: "Love", description: "An intense feeling of deep affection." },
+//     { name_type: "Anger", description: "A strong feeling of annoyance or displeasure." },
+//     { name_type: "Fear", description: "An unpleasant emotion caused by the threat of danger." },
+//     { name_type: "Surprise", description: "A feeling of astonishment caused by something unexpected." },
+// ];
+// async function addTypes() {
+//     try {
+//         for (const type of typesToAdd) {
+//             await Types.findOneAndUpdate(
+//                 { name_type: type.name_type },
+//                 type,
+//                 { upsert: true, new: true }
+//             );
+//         }
+
+//         console.log('Types added successfully!');
+//     } catch (err) {
+//         console.error('Error adding types:', err);
+//     }
+// }
+
+// addTypes();
+
+
+
+app.use(session({
+    secret: process.env.SECRETKEY,  // Chọn một key bí mật cho session
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }  // Đặt là true khi sử dụng HTTPS trong môi trường sản xuất
+}));
+app.use(fileUpload({
+    createParentPath: true,
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,6 +71,8 @@ const playListRoute = require("./routes/playlist.route");
 app.use("/api/playlist", playListRoute);
 const searchRoute = require("./routes/search.route");
 app.use("/api/search", searchRoute);
+const albumRoute = require("./routes/album.route");
+app.use("/api/album", albumRoute);
 
 
 
@@ -58,8 +97,8 @@ connectDB();
 
 
 
-app.listen(8000, () => {
-    console.log("Server is running http://localhost:8000 ");
+app.listen(8888, () => {
+    console.log("Server is running http://localhost:8888 ");
 });
 
 
@@ -69,3 +108,14 @@ app.listen(8000, () => {
 // })
 
 // newTypes.save();
+
+
+// const axios = require("axios");
+
+// axios.get("http://127.0.0.1:8000/v1/get_emotions/?sentence=I%20lost%20you")
+//     .then((response) => {
+//         console.log("Test connection to API 8000 succeeded:", response.data);
+//     })
+//     .catch((error) => {
+//         console.error("Test connection to API 8000 failed:", error.message);
+//     });

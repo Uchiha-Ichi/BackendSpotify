@@ -5,13 +5,11 @@ const Songs = require("../models/Songs.model");
 const searchController = {
     search: async (req, res) => {
         const { key } = req.body;
-
         if (!key) {
             return res.status(400).json({ message: "No search key provided" });
         }
-        console.log(key);
         try {
-            const regex = new RegExp(key, "i");
+            const regex = new RegExp(key.trim(), "i");
             const songResults = await Songs.find({ name_song: { $regex: regex } }).lean();
             const accountResults = await Accounts.find({ account_name: { $regex: regex }, admin: true }).lean();
 

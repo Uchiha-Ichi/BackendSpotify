@@ -26,8 +26,6 @@ async function uploadSong(file, filename) {
         'name': filename + ".mp3",
         'parents': [FOLDER_SONG],
     };
-    console.log("file:", file);
-    console.log("filedata:", file.data);
     // Nội dung file
     let media = {
         mimeType: 'audio/mpeg',

@@ -4,7 +4,6 @@ const listenSchema = new mongoose.Schema({
     id_account: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Accounts",
-        required: true
     },
     id_song: {
         type: mongoose.Schema.Types.ObjectId,
