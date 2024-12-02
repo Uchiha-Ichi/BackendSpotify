@@ -6,6 +6,7 @@ const playListController = {
     getplaylist: async (req, res) => {
         try {
             const refreshToken = req.cookies.refreshToken;
+            // console.log("Refresh token: ", refreshToken);
             if (!refreshToken) {
                 return res.status(401).json({ error: "No refresh token provided." });
             }

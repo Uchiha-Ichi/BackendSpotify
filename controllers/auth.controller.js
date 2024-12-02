@@ -3,6 +3,19 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 // const { uploadSong, uploadIMG } = require("../driveApi.js");
 const authController = {
+    getAllArtist: async (req, res) => {
+        try {
+            const artist = await Accounts.find({ admin: true });
+            // .sort({ create_date: -1 })
+            return res.status(200).json(artist);
+        } catch (err) {
+            return res.status(500).json(err);
+        }
+    },
+    getArtistById: async (req, res) => {
+        const artist = await Accounts.find({ id: req.params.id });
+        return res.status(200).json(artist);
+    },
     registerAccount: async (req, res) => {
         try {
             const salt = await bcrypt.genSalt(10);

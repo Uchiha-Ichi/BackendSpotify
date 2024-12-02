@@ -38,7 +38,12 @@ const Types = require("./models/Types.model");
 
 // addTypes();
 
-
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(session({
     secret: process.env.SECRETKEY,  // Chọn một key bí mật cho session
@@ -57,7 +62,6 @@ app.use(express.urlencoded({ extended: true }));
 // app.use(express.static('public'));
 
 app.use(bodyParser.json({ limit: "50mb" }));
-app.use(cors());
 app.use(morgan("common"));
 
 

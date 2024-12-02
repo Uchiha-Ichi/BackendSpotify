@@ -15,7 +15,7 @@ const albumController = {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
                 let album = await Albums.find({ id_account: account.id });
-                return res.status(200).json(playlist);
+                return res.status(200).json(album);
             });
         }
         catch (err) {
@@ -24,7 +24,7 @@ const albumController = {
     },
     getAllAlbum: async (req, res) => {
         try {
-            let album = await Albums.find();
+            let album = await Albums.find().sort({ create_date: -1 }).limit(15);
             return res.json(200).json(album);
 
         } catch (err) {

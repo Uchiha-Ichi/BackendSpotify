@@ -5,11 +5,13 @@ const { uploadSong, uploadIMG } = require("../driveApi.js");
 const axios = require('axios');
 const Types = require("../models/Types.model.js");
 const Listens = require("../models/Listens.model.js");
-
+const path = require('path');
+const fs = require('fs');
 const songController = {
     getAllSongs: async (req, res) => {
         try {
             const allSongs = await Songs.find().sort({ create_date: -1 });
+
             return res.status(200).json(allSongs);
         } catch (err) {
             return res.status(500).json(err);
@@ -179,7 +181,17 @@ const songController = {
                     id_album: null,
                     id_type: id_type
                 });
-                const song = await newSong.save();
+                const song = await newSong.save().then(saveSong => {
+                    const imagesDir = path.join(__dirname, '..', '..', 'frontend', 'public', 'images');
+                    const songId = saveSong._id.toString();
+                    const destinationPath = path.join(imagesDir, `${songId}.jpg`);
+                    imgPath.mv(destinationPath, (err) => {
+                        if (err) {
+                            return res.status(500).send(err);
+                        }
+                    });
+                })
+
                 return res.status(200).json(song);
 
             });
@@ -201,10 +213,10 @@ const songController = {
                 const { name_song, lyrics, description, id_type, feat } = req.body;
 
                 req.session.name_song = name_song.trim();
-                req.session.lyrics = lyrics.trim();
-                req.session.description = description.trim();
-                req.session.id_type = id_type.trim();
-                req.session.feat = feat.trim();
+                req.session.lyrics = lyrics;
+                req.session.description = description;
+                req.session.id_type = id_type;
+                req.session.feat = feat;
                 return res.status(200).json({
                 });
 

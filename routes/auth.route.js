@@ -4,8 +4,9 @@ const { verifyToken } = require("../controllers/middleware.controller");
 
 const router = express.Router();
 
+router.get("/getAllArtists", authController.getAllArtist);
 
-
+router.get("/getArtist/:id", authController.getArtistById);
 router.post("/login", authController.loginAccount);
 
 router.post("/register", authController.registerAccount);
