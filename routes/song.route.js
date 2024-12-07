@@ -9,11 +9,15 @@ router.delete("/:id", verifyTokenAndUserAuthorization, songController.deleteSong
 router.get("/getAllSongs", songController.getAllSongs);
 router.get("/getSongById/:id", songController.getSongById);
 router.get("/getImageById/:id", songController.getImageById);
-router.post("/addSongToLove", songController.addSongToLove);
+router.get("/addSongToLove/:id", songController.addSongToLove);
 router.delete("removeSongFromLove", songController.removeSongFromLove);
 router.put("/updateSong/:id", songController.editSong);
-router.put("/addSongtoAlbum/:id", songController.addSongtoAlbum);
+router.post("/addSongtoAlbum", songController.addSongtoAlbum);
 router.put("/removeSongFromAlbum/:id", songController.removeSongFromAlbum);
-router.get("/getSongByAlbum", songController.getSongByAlbum);
-router.get('/get_emotions', songController.getEmotions);
+router.get("/getSongByAlbum/:id", songController.getSongByAlbum);
+router.post('/get_emotions', songController.getEmotions);
+router.get("/getLovedSongbyIdAccount", songController.getLovedSongsbyIdAccount);
+router.get("/getSongsByIdAccount/:id", songController.getSongsByIdAccount);
+
+
 module.exports = router;

@@ -77,6 +77,8 @@ const searchRoute = require("./routes/search.route");
 app.use("/api/search", searchRoute);
 const albumRoute = require("./routes/album.route");
 app.use("/api/album", albumRoute);
+const typeRoute = require("./routes/type.route");
+app.use("/api/type", typeRoute);
 
 
 

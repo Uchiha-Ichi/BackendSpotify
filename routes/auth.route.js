@@ -15,11 +15,11 @@ router.post("/refresh", verifyToken, authController.requestRefreshToken);
 
 router.post("/logout", verifyToken, authController.logoutAccount);
 
-router.put("/editAccName/:id", authController.editAccount_name);
+router.post("/editAccount_name", authController.editAccount_name);
 
-router.put("/editAccAV/:id", authController.editAccount_avata);
+router.post("/editAccount_avatar", authController.editAccount_avatar);
 
-router.put("/editAccPass/:id", authController.editAccount_password);
+router.post("/editAccount_password", authController.editAccount_password);
 
 // router.post("/refresh", verifyToken, authController.requestRefreshToken);
 

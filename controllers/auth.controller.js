@@ -1,5 +1,7 @@
 const { Accounts } = require("../models/Accounts.model");
 const bcrypt = require("bcrypt");
+const path = require('path');
+const fs = require('fs');
 const jwt = require("jsonwebtoken");
 // const { uploadSong, uploadIMG } = require("../driveApi.js");
 const authController = {
@@ -20,34 +22,31 @@ const authController = {
         try {
             const salt = await bcrypt.genSalt(10);
             const hashed = await bcrypt.hash(req.body.password, salt);
-            // let imgDefault = null;
-            // const img = avPath ? avPath : imgDefault;
-            // const uploadedIMG = fs.createReadStream(img);
-            // const driveLinkIMG = await uploadIMG(uploadedIMG, name_song);
-            // console.log('Drive link:', driveLink);
-            // if (!driveLinkIMG) {
-            //     return return res.status(500).json({ error: "Không thể upload ảnh lên Google Drive." });
-            // }
-            console.log(hashed);
+
+            const email = req.body.email;
+            const account_name = req.body.account_name;
+
             const newAccount = await new Accounts({
-                email: req.body.email,
+                email: email,
                 avatar: null,
-                account_name: req.body.account_name,
+                account_name: account_name,
                 password: hashed,
                 create_date: new Date(),
                 admin: true
             });
 
             const account = await newAccount.save();
-            const accessToken = authController.generrateAccessToken(account);
-            const refreshToken = authController.generateRefreshToken(account);
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: false,
-                path: "/",
-                sameSite: "strict",
+            const imagePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'assets', 'img', 'daunguoi.png');
+            const imagesDir = path.join(__dirname, '..', '..', 'frontend', 'public', 'images');
+
+            const account_id = account._id.toString();
+            const destinationPath = path.join(imagesDir, `${account_id}.jpg`);
+            fs.copyFile(imagePath, destinationPath, (err) => {
+                if (err) {
+                    return res.status(500).send(err);
+                }
             });
-            return res.status(200).json(account, accessToken, refreshToken);
+            return res.status(200).json();
         } catch (err) {
             if (err.code === 11000) {
                 return res.status(400).json({ error: "Email already exists!" });
@@ -84,7 +83,6 @@ const authController = {
         try {
             console.log(req.body);
             const account = await Accounts.findOne({ email: req.body.email });
-
             if (!account) {
                 return res.status(404).json("Incorrect username");
             }
@@ -146,22 +144,23 @@ const authController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
-                const { user_name } = req.body;
-                const updatedAccount = await Account.findOneAndUpdate({ _id: account._id },
-                    { $set: { account_name: user_name } },
+                const account_name = req.body.newName;
+                const updatedAccount = await Accounts.findOneAndUpdate({ _id: account.id },
+                    { $set: { account_name: account_name } },
                     { new: true, runValidators: true });
                 if (!updatedAccount) {
-                    return res.status(404).json({ error: "Song not found" });
+                    return res.status(404).json({ error: "Account not found" });
                 }
-
-                return res.status(200).json({ message: "Song updated successfully", data: updatedAccount });
+                const accessToken = authController.generrateAccessToken(account);
+                const refreshToken = authController.generateRefreshToken(account);
+                return res.status(200).json(updatedAccount, accessToken, refreshToken);
             }
             );
         } catch (err) {
             return res.status(500).json(err);
         }
     },
-    editAccount_avata: async (req, res) => {
+    editAccount_avatar: async (req, res) => {
         try {
             const refreshToken = req.cookies.refreshToken;
             if (!refreshToken) {
@@ -171,20 +170,25 @@ const authController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
-                const { img } = req.body;
-                const uploadedIMG = fs.createReadStream(img);
-                const driveLinkIMG = await uploadIMG(uploadedIMG, name_song);
-                if (!driveLinkIMG) {
-                    return res.status(500).json({ error: "Không thể upload ảnh lên Google Drive." });
+                const imgPath = req.files.imgPath;
+                const id_account = account.id.toString();
+                const imagesDir = path.join(__dirname, '..', '..', 'frontend', 'public', 'images');
+                const imagePath = path.join(imagesDir, `${id_account}.jpg`);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlink(imagePath, (err) => {
+                        if (err) {
+                            console.error("Error deleting image:", err);
+                            return;
+                        }
+                    });
                 }
-                const updatedAccount = await Account.findOneAndUpdate({ _id: account._id },
-                    { $set: { avatar: driveLinkIMG } },
-                    { new: true, runValidators: true });
-                if (!updatedAccount) {
-                    return res.status(404).json({ error: "edit avatar fail" });
-                }
+                imgPath.mv(imagePath, (err) => {
+                    if (err) {
+                        return res.status(500).send(err);
+                    }
+                });
 
-                return res.status(200).json({ message: "Account avatar updated successfully", data: updatedAccount });
+                return res.status(200).json();
             }
             );
         } catch (err) {
@@ -201,21 +205,23 @@ const authController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
-                const validPassword = await bcrypt.compare(req.body.password, account.password);
+                const newPassword = req.body.newPassword;
+                const validPassword = await bcrypt.compare(newPassword, account.password);
 
-                if (!validPassword) {
+                if (validPassword) {
                     return res.status(404).json("Incorrect password");
                 }
                 const salt = await bcrypt.genSalt(10);
-                const hashed = await bcrypt.hash(req.body.newPassword, salt);
-                const updatedAccount = await Account.findOneAndUpdate({ _id: account._id },
+                const hashed = await bcrypt.hash(newPassword, salt);
+                const updatedAccount = await Accounts.findOneAndUpdate({ _id: account.id },
                     { $set: { password: hashed } },
                     { new: true, runValidators: true });
                 if (!updatedAccount) {
                     return res.status(404).json({ error: "edit password fail" });
                 }
+                const accessToken = authController.generrateAccessToken(account);
 
-                return res.status(200).json({ message: "Account password updated successfully", data: updatedAccount });
+                return res.status(200).json(updatedAccount, accessToken, refreshToken);
             }
             );
         } catch (err) {

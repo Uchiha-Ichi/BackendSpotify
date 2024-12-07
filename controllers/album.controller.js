@@ -4,7 +4,7 @@ const Songs = require("../models/Songs.model");
 const jwt = require("jsonwebtoken");
 
 const albumController = {
-    getAlbumByAccount: async (req, res) => {
+    getAlbumForAccount: async (req, res) => {
         try {
             const refreshToken = req.cookies.refreshToken;
             if (!refreshToken) {
@@ -22,10 +22,19 @@ const albumController = {
             return res.status(500).json(err);
         }
     },
+    getAlbumByAccount: async (req, res) => {
+        try {
+            const account_id = req.params.id || req.query.id;
+            const albums = await Albums.find({ id_accounts: account_id });
+            return res.json(albums);
+        } catch (e) {
+            return res.status(500).json(e);
+        }
+    },
     getAllAlbum: async (req, res) => {
         try {
-            let album = await Albums.find().sort({ create_date: -1 }).limit(15);
-            return res.json(200).json(album);
+            let album = await Albums.find().sort({ create_date: -1 });
+            return res.status(200).json(album);
 
         } catch (err) {
             return res.status(500).json(err);
@@ -43,7 +52,7 @@ const albumController = {
                 }
                 const albumId = req.params.id;
                 await Albums.findByIdAndDelete(albumId);
-                const song = await Songs.updateMany(
+                await Songs.updateMany(
                     { id_album: albumId },
                     { $set: { id_album: null } }
                 );

@@ -148,6 +148,8 @@ const songController = {
                 }
 
                 if (!req.files || !req.files.filePath || !req.files.imgPath) {
+                    console.log("file", req.files.filePath)
+                    console.log("img", req.files.imgPath)
                     return res.status(400).json({ error: "Files are missing!" });
                 }
                 let artist = account.id;
@@ -159,6 +161,7 @@ const songController = {
                 const description = req.session.description;
                 const feat = req.session.feat;
                 const id_type = req.session.id_type;
+                const id_album = req.session.id_album;
                 const driveLink = await uploadSong(filePath, name_song);
                 //console.log('Drive link:', driveLink);
                 if (!driveLink) {
@@ -178,7 +181,7 @@ const songController = {
                     create_date: new Date(),
                     id_accounts: artist,
                     feat: feat,
-                    id_album: null,
+                    id_album: id_album,
                     id_type: id_type
                 });
                 const song = await newSong.save().then(saveSong => {
@@ -210,13 +213,24 @@ const songController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
-                const { name_song, lyrics, description, id_type, feat } = req.body;
+                let { name_song, id_album, lyrics, description, id_type, feat } = req.body;
+                if (id_album === '') {
+                    id_album = null;
+                }
+                if (description === '') {
+                    description = null;
+                }
+                if (lyrics === '') {
+                    lyrics = null;
+                }
 
                 req.session.name_song = name_song.trim();
                 req.session.lyrics = lyrics;
                 req.session.description = description;
+                req.session.id_album = id_album;
                 req.session.id_type = id_type;
                 req.session.feat = feat;
+                console.log(name_song, id_album, lyrics, description, id_type, feat);
                 return res.status(200).json({
                 });
 
@@ -237,11 +251,19 @@ const songController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
+                const id_song = req.params.id || req.query.id;
+                console.log("idsong", id_song);
+                if (!id_song) {
+                    return res.status(400).json({ message: "Not a valid song" })
+                }
+                const existingEntry = await Loves.findOne({ id_account: account.id, id_song: id_song });
+                if (existingEntry) {
+                    return res.status(400).json({ message: "Bài hát có trong yêu thích rồi" });
+                }
                 const newLove = await new Loves({
                     id_account: account.id,
-                    id_song: req.body.id__song,
+                    id_song: id_song,
                     love_time: new Date(),
-
                 });
                 const love = await newLove.save();
                 return res.status(200).json(love);
@@ -309,11 +331,11 @@ const songController = {
                 if (err) {
                     return res.status(403).json({ error: "Invalid refresh token." });
                 }
-                const {
-                    id_album,
-                } = req.body;
+                const id_album = req.body.id_album;
+                const id_song = req.body.id_song;
+
                 const song = await Songs.findByIdAndUpdate(
-                    req.params.id,
+                    { _id: id_song },
                     {
                         $set: {
                             id_album: id_album,
@@ -367,23 +389,22 @@ const songController = {
     },
     getSongByAlbum: async (req, res) => {
         try {
-            const song = await Songs.find({ album: req.params.id });
+            const id_album = req.params.id || req.query.id;
+            const song = await Songs.find({ id_album: id_album });
             if (song.length === 0) {
                 return res.status(404).json({
                     message: 'No songs found for this album',
                 });
             }
-            res.status(200).json({
-                message: 'Songs found',
-                songs: song,
-            });
+            res.status(200).json(song);
         } catch (err) {
             return res.status(500).json(err);
         }
     },
     getEmotions: async (req, res) => {
         try {
-            const sentence = req.query.sentence;
+            const sentence = req.body.sentence;
+            console.log(sentence);
             if (!sentence) {
                 return res.status(501).json({ error: "Text is required" });
             }
@@ -393,43 +414,73 @@ const songController = {
 
             const lable = response.data.result[0]?.label;
             const regex = new RegExp(lable, "i");
+            console.log(lable);
+            console.log(regex);
             const type = await Types.find({ name_type: { $regex: regex } }).lean();
-            console.log(type[0]._id);
-            const songResults = await Songs.aggregate([
-                { $match: { id_type: type[0]._id } },
+            console.log(type[0].name_type);
+            // const songResults = await Songs.aggregate([
+            //     { $match: { id_type: type[0]._id } },
 
 
-                {
-                    $lookup: {
-                        from: "listens",
-                        localField: "_id",
-                        foreignField: "id_song",
-                        as: "listen_info"
-                    }
-                },
+            //     {
+            //         $lookup: {
+            //             from: "listens",
+            //             localField: "_id",
+            //             foreignField: "id_song",
+            //             as: "listen_info"
+            //         }
+            //     },
 
-                { $unwind: "$listen_info" },
-
-
-                { $sort: { "listen_info.listen_time": -1 } },
+            //     { $unwind: "$listen_info" },
 
 
-                {
-                    $project: {
-                        name_song: 1,
-                        listen_time: "$listen_info.listen_time",
-                        id_account: "$listen_info.id_account",
-                    }
-                }
-            ]);
-            if (songResults.length === 0) {
-                const songFinds = await Songs.find({ id_type: type[0]._id })
-                return res.status(200).json(songFinds);
-            }
-            return res.status(200).json(songResults);
+            //     { $sort: { "listen_info.listen_time": -1 } },
+
+
+            //     {
+            //         $project: {
+            //             name_song: 1,
+            //             listen_time: "$listen_info.listen_time",
+            //             id_account: "$listen_info.id_account",
+            //         }
+            //     }
+            // ]);
+            // if (songResults.length === 0) {
+            const songFinds = await Songs.find({ id_type: type[0]._id })
+            return res.status(200).json(songFinds);
+            // }
+            // return res.status(200).json(songResults);
 
         } catch (e) {
             return res.status(500).json({ e: "failed to fetch predictions" });
+        }
+    },
+    getSongsByIdAccount: async (req, res) => {
+        try {
+            const account_id = req.params.id || req.query.id;
+            const songs = await Songs.find({ id_accounts: account_id });
+            return res.json(songs);
+        } catch (e) {
+            return res.status(500).json({ e });
+        }
+    },
+    getLovedSongsbyIdAccount: async (req, res) => {
+        try {
+            const refreshToken = req.cookies.refreshToken;
+            if (!refreshToken) {
+                return res.status(401).json({ err: "No refresh token provided" });
+            }
+            jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY, async (err, account) => {
+                if (err) {
+                    return res.status(403).json({ err: "Invalid refresh token" });
+                }
+                const lovedSongs = await Loves.find({ id_account: account.id }).populate('id_song');
+                const songs = lovedSongs.map(item => item.id_song);
+                return res.status(200).json(songs);
+            });
+
+        } catch (err) {
+            return res.status(500).json(err);
         }
     }
 

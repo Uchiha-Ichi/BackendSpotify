@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 router.get('/get_emotions', async (req, res) => {
-    const query = req.body;
+    const query = req.body.sentence;
     if (!query) {
         return res.status(400).json({ error: "Text is required" });
     }
