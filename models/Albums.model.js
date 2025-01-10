@@ -4,7 +4,6 @@ const albumSchema = new mongoose.Schema({
     name_album: {
         type: String,
         required: true,
-        unique: true,
     },
     create_date: {
         type: String,

@@ -32,7 +32,7 @@ const authController = {
                 account_name: account_name,
                 password: hashed,
                 create_date: new Date(),
-                admin: true
+                admin: false
             });
 
             const account = await newAccount.save();

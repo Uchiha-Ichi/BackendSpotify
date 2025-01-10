@@ -5,12 +5,14 @@ const { uploadSong, uploadIMG } = require("../driveApi.js");
 const axios = require('axios');
 const Types = require("../models/Types.model.js");
 const Listens = require("../models/Listens.model.js");
+const PlayList_Songs = require("../models/Playlist_Songs.model");
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 const songController = {
     getAllSongs: async (req, res) => {
         try {
-            const allSongs = await Songs.find().sort({ create_date: -1 });
+            const allSongs = (await Songs.find()).reverse();
 
             return res.status(200).json(allSongs);
         } catch (err) {
@@ -21,55 +23,56 @@ const songController = {
         const refreshToken = req.cookies.refreshToken;
         jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY, async (err, account) => {
             const listenedSongs = await Listens.aggregate([
-                { $match: { id_account: mongoose.Types.ObjectId(account._id) } },
                 {
-                    $lookup: {
-                        from: 'songs',
-                        localField: 'id_song',
-                        foreignField: '_id',
-                        as: 'song_info'
+                    $match: {
+                        id_account: mongoose.Types.ObjectId(account.id)  // Tìm tất cả bài hát của người dùng với id_account
                     }
                 },
-                { $unwind: '$song_info' },
-                { $sort: { listen_time: -1 } },
                 {
-                    $group: {
-                        _id: '$id_song',
-                        latestListenTime: { $first: '$listen_time' },
-                        songInfo: { $first: '$song_info' }
+                    $lookup: {
+                        from: 'songs',  // Lấy thông tin bài hát từ bảng 'songs'
+                        localField: 'id_song',  // Sử dụng id_song từ bảng Listens
+                        foreignField: '_id',  // So khớp với _id trong bảng Songs
+                        as: 'song_info'  // Trả về dưới dạng mảng song_info
                     }
+                },
+                {
+                    $unwind: '$song_info'
                 },
                 {
                     $project: {
-                        _id: 0,
-                        id_song: '$_id',
-                        songInfo: 1,
-                        latestListenTime: 1
+                        _id: '$song_info._id',
+                        name_song: '$song_info.name_song',
+                        link: '$song_info.link',
+                        image: '$song_info.image',
+                        lyrics: '$song_info.lyrics',
+                        description: '$song_info.description',
+                        create_date: '$song_info.create_date',
+                        id_accounts: '$song_info.id_accounts',
+                        feat: '$song_info.feat',
+                        id_album: '$song_info.id_album',
+                        id_type: '$song_info.id_type'
                     }
                 }
             ]);
 
             let finalSongs;
-
+            const allSongs = await Songs.find().sort({ create_date: -1 });
 
             if (!listenedSongs || listenedSongs.length === 0) {
                 console.log("No recently listened songs found. Fetching all songs...");
-                const allSongs = await Songs.find().sort({ create_date: -1 });
-                finalSongs = allSongs.map(song => ({
-                    id_song: song._id,
-                    songInfo: song,
-                    latestListenTime: null
-                }));
+
+                finalSongs = allSongs.map(song => song);
+
             } else {
                 console.log("Found recently listened songs.");
-                finalSongs = listenedSongs;
+                const reverseSongs = listenedSongs.reverse();
+                const collectionSongs = [...reverseSongs, ...allSongs];
+                finalSongs = Array.from(new Map(collectionSongs.map(song => [song._id.toString(), song])).values());
             }
 
             // Trả về kết quả
-            res.status(200).json({
-                message: "Songs fetched successfully",
-                data: finalSongs
-            });
+            res.status(200).json(finalSongs);
         });
     },
     getSongById: async (req, res) => {
@@ -130,7 +133,10 @@ const songController = {
     },
     deleteSong: async (req, res) => {
         try {
-            await Songs.findByIdAndDelete(req.params.id);
+            const id_song = req.params.id;
+            await Songs.findByIdAndDelete(id_song);
+            await PlayList_Songs.deleteMany({ id_song: id_song });
+            await Listens_Songs.deleteMany({ id_song: id_song });
             return res.status(200).json("Songs deleted");
         } catch (err) {
             return res.status(500).json(err);
@@ -287,26 +293,17 @@ const songController = {
     editSong: async (req, res) => {
         try {
             const {
+                id_song,
                 name_song,
-                link,
-                lyrics,
-                image,
                 description,
-                id_album,
-                id_type
             } = req.body;
+            console.log(name_song);
             const updatedSong = await Songs.findByIdAndUpdate(
-                req.params.id,
+                id_song,
                 {
                     $set: {
                         name_song: name_song,
-                        link: link,
-                        lyrics: lyrics,
-                        image: image,
                         description: description,
-                        id_album: id_album,
-                        id_type: id_type,
-                        updated_at: new Date()
                     }
                 },
                 { new: true, runValidators: true }
@@ -451,6 +448,76 @@ const songController = {
             // }
             // return res.status(200).json(songResults);
 
+        } catch (e) {
+            return res.status(500).json({ e: "failed to fetch predictions" });
+        }
+    },
+    getEmotionsForAccount: async (req, res) => {
+        try {
+            const refreshToken = req.cookies.refreshToken;
+            if (!refreshToken) {
+                return res.status(401).json({ err: "No refresh token provided" });
+            }
+            jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY, async (err, account) => {
+                if (err) {
+                    return res.status(403).json({ err: "Invalid refresh token" });
+                }
+                const sentence = req.body.sentence;
+                console.log(sentence);
+                if (!sentence) {
+                    return res.status(501).json({ error: "Text is required" });
+                }
+                const response = await axios.get("http://127.0.0.1:8000/v1/get_emotions/", {
+                    params: { sentence },
+                });
+
+                const lable = response.data.result[0]?.label;
+                const regex = new RegExp(lable, "i");
+                console.log(lable);
+                console.log(regex);
+                const type = await Types.find({ name_type: { $regex: regex } }).lean();
+                console.log(type[0].name_type);
+
+                const songFinds = await Songs.find({ id_type: type[0]._id })
+
+                const listenedSongs = await Listens.aggregate([
+                    {
+                        $match: {
+                            id_account: mongoose.Types.ObjectId(account.id)
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'songs',
+                            localField: 'id_song',
+                            foreignField: '_id',
+                            as: 'song_info'
+                        }
+                    },
+                    {
+                        $unwind: '$song_info'
+                    },
+                    {
+                        $project: {
+                            _id: '$song_info._id',
+                            name_song: '$song_info.name_song',
+                            link: '$song_info.link',
+                            image: '$song_info.image',
+                            lyrics: '$song_info.lyrics',
+                            description: '$song_info.description',
+                            create_date: '$song_info.create_date',
+                            id_accounts: '$song_info.id_accounts',
+                            feat: '$song_info.feat',
+                            id_album: '$song_info.id_album',
+                            id_type: '$song_info.id_type'
+                        }
+                    }
+                ]);
+                const filteredSongs = listenedSongs.filter(song => song.id_type.toString() === type[0]._id.toString()).reverse();
+                const collectionSongs = [...filteredSongs, ...songFinds];
+                const finalSongs = Array.from(new Map(collectionSongs.map(song => [song._id.toString(), song])).values());
+                return res.status(200).json(finalSongs);
+            });
         } catch (e) {
             return res.status(500).json({ e: "failed to fetch predictions" });
         }
